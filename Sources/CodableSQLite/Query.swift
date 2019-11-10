@@ -7,10 +7,10 @@
 
 import Foundation
 
-class Query: QueryProtocol {
-    let sql: String
+public class Query: QueryProtocol {
+    public let sql: String
 
-    init(sql: String) {
+    public init(sql: String) {
         self.sql = sql
     }
 }

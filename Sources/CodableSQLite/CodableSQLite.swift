@@ -4,11 +4,11 @@ import SQLite3
 public class CodableSQLite {
     let filePath: String!
 
-    init(path: String) {
+    public init(path: String) {
         self.filePath = path
     }
 
-    func executeQuery(query: QueryProtocol) -> [[String: Codable]]? {
+    public func executeQuery(query: QueryProtocol) -> [[String: Codable]]? {
         guard let theFile = openDB() else { return nil }
         var theStmt: OpaquePointer? = nil
         let prepareResult = sqlite3_prepare_v2(theFile, query.sql, -1, &theStmt, nil)

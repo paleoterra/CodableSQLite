@@ -7,11 +7,11 @@
 
 import Foundation
 
-class QueryWithBinding: QueryProtocol, QueryBindable {
-    let sql: String
-    let bindings: [Any]
+public class QueryWithBinding: QueryProtocol, QueryBindable {
+    public let sql: String
+    public let bindings: [Any]
 
-    init(sql: String, bindings: [Any]) {
+    public init(sql: String, bindings: [Any]) {
         self.sql = sql
         self.bindings = bindings
     }

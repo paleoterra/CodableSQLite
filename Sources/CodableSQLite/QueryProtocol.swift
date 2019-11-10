@@ -7,10 +7,10 @@
 
 import Foundation
 
-protocol QueryProtocol {
+public protocol QueryProtocol {
     var sql: String { get }
 }
 
-protocol QueryBindable {
+public protocol QueryBindable {
     var bindings: [Any]  { get }
 }
