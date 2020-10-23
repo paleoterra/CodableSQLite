@@ -8,6 +8,11 @@ public class CodableSQLite {
         self.filePath = path
     }
 
+    public func executeDataQuery(query: QueryProtocol) -> Data? {
+        guard let result = executeQuery(query: query) else { return nil }
+        return try? JSONSerialization.data(withJSONObject: result, options: .prettyPrinted)
+    }
+
     public func executeQuery(query: QueryProtocol) -> [[String: Codable]]? {
         guard let theFile = openDB() else { return nil }
         var theStmt: OpaquePointer? = nil
