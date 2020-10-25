@@ -1,11 +1,21 @@
 import Foundation
 import SQLite3
 
-public class CodableSQLite {
-    let filePath: String!
+public protocol CodableSQLiteAPI {
+    func setFile(path: String) -> Bool
+    func executeDataQuery(query: QueryProtocol) -> Data?
+    func executeQuery(query: QueryProtocol) -> [[String: Codable]]?
+}
 
-    public init(path: String) {
-        self.filePath = path
+public class CodableSQLite: CodableSQLiteAPI {
+    var filePath: String?
+
+    public func setFile(path: String) -> Bool {
+        if FileManager.default.fileExists(atPath: path) {
+            filePath = path
+            return true
+        }
+        return false
     }
 
     public func executeDataQuery(query: QueryProtocol) -> Data? {
