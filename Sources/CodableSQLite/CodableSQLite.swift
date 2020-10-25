@@ -18,6 +18,8 @@ public class CodableSQLite: CodableSQLiteAPI {
         return false
     }
 
+    public init() {}
+
     public func executeDataQuery(query: QueryProtocol) -> Data? {
         guard let result = executeQuery(query: query) else { return nil }
         return try? JSONSerialization.data(withJSONObject: result, options: .prettyPrinted)
