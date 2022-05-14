@@ -12,5 +12,5 @@ public protocol QueryProtocol {
 }
 
 public protocol QueryBindable {
-    var bindings: [Any]  { get }
+    var bindings: [Any] { get }
 }

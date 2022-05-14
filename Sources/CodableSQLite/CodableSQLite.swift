@@ -2,37 +2,47 @@ import Foundation
 import SQLite3
 
 public protocol CodableSQLiteAPI {
-    func setFile(path: String) -> Bool
-    func executeDataQuery(query: QueryProtocol) -> Data?
-    func executeQuery(query: QueryProtocol) -> [[String: Codable]]?
+    func setFile(path: String) async throws
+    func executeDataQuery(query: QueryProtocol) async throws -> Data
+    func executeQuery(query: QueryProtocol) async throws -> [[String: Codable]]
 }
 
-public class CodableSQLite: CodableSQLiteAPI {
+public actor CodableSQLite: CodableSQLiteAPI {
     var filePath: String?
 
-    public func setFile(path: String) -> Bool {
+    public func setFile(path: String) async throws {
         if FileManager.default.fileExists(atPath: path) {
             filePath = path
-            return true
         }
-        return false
+        throw(CodableSQLError.fileNotFound)
     }
 
     public init() {}
 
-    public func executeDataQuery(query: QueryProtocol) -> Data? {
-        guard let result = executeQuery(query: query) else { return nil }
-        return try? JSONSerialization.data(withJSONObject: result, options: .prettyPrinted)
+    public init(path: String) async throws {
+        try await setFile(path: path)
     }
 
-    public func executeQuery(query: QueryProtocol) -> [[String: Codable]]? {
-        guard let theFile = openDB() else { return nil }
-        var theStmt: OpaquePointer? = nil
+    public func executeDataQuery(query: QueryProtocol) async throws -> Data {
+        let result = try await executeQuery(query: query)
+        return try JSONSerialization.data(withJSONObject: result, options: .prettyPrinted)
+    }
+
+    public func executeQuery(query: QueryProtocol) async throws -> [[String: Codable]] {
+        let theFile = try openDB()
+        var theStmt: OpaquePointer?
         let prepareResult = sqlite3_prepare_v2(theFile, query.sql, -1, &theStmt, nil)
-        guard let stmt = theStmt, prepareResult == SQLITE_OK else {
+
+        guard let stmt = theStmt else {
+            let message: String = String(cString: sqlite3_errmsg(theFile))
             closeDB(theFile)
-            return nil
+            throw(CodableSQLError.sqliteStatementError(message))
         }
+
+        guard prepareResult == SQLITE_OK else {
+            try processSQLiteError(file: theFile)
+        }
+
         sqlite3_reset(stmt)
         if let bindableQuery = query as? QueryBindable {
             let bindings = bindableQuery.bindings
@@ -47,21 +57,27 @@ public class CodableSQLite: CodableSQLiteAPI {
             print(#function)
             print("code \(error)")
             print(String(cString: sqlite3_errstr(error)))
-            sqlite3_finalize(stmt)
         }
+        sqlite3_finalize(stmt)
         closeDB(theFile)
         return rowData
     }
 
     // MARK: Private API
-    private func openDB()  -> OpaquePointer? {
+    private func openDB() throws -> OpaquePointer {
 
-        var  theFile: OpaquePointer? = nil
-        let returnCode = sqlite3_open_v2(filePath,&theFile,SQLITE_OPEN_READONLY,nil)
-        if returnCode != SQLITE_OK {
-            return nil
+        var theFile: OpaquePointer?
+        let returnCode = sqlite3_open_v2(filePath, &theFile, SQLITE_OPEN_READONLY, nil)
+        guard let file = theFile, returnCode == SQLITE_OK else {
+            throw(CodableSQLError.failedToOpen)
         }
-        return theFile
+        return file
+    }
+
+    private func processSQLiteError(file: OpaquePointer) throws {
+        let message: String = String(cString: sqlite3_errmsg(file))
+        closeDB(file)
+        throw(CodableSQLError.sqliteError(message))
     }
 
     private func closeDB(_ theFile: OpaquePointer?) {
@@ -69,11 +85,11 @@ public class CodableSQLite: CodableSQLiteAPI {
         sqlite3_close_v2(file)
     }
 
-    private func bind(bindings: [Any], statement: OpaquePointer) {
+    private func bind(bindings: [Any], statement: OpaquePointer) throws {
         for (index, binding) in bindings.enumerated() {
             let currentIndex = Int32(index + 1)
             var result: Int32 = 0
-            switch(binding) {
+            switch binding {
             case let value as Int:
                 result = sqlite3_bind_int(statement, currentIndex, Int32(value))
             case let value as Int32:
@@ -94,10 +110,11 @@ public class CodableSQLite: CodableSQLiteAPI {
                                            nil)
 
             default:
-                break;
+                break
             }
             if result != SQLITE_OK {
-                print("error")
+                let message: String = String(cString: sqlite3_errstr(result))
+                throw(CodableSQLError.sqliteBindingError(message))
             }
         }
     }
@@ -130,7 +147,7 @@ public class CodableSQLite: CodableSQLiteAPI {
                 case  SQLITE_NULL:
                     ()
                 default:
-                    print("\(columnString) \(columnType)")//do not handle
+                    print("\(columnString) \(columnType)")// do not handle
                 }
             }
         }

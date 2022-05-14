@@ -6,13 +6,13 @@ import PackageDescription
 let package = Package(
     name: "CodableSQLite",
     platforms: [
-        .macOS(.v10_10),
-        .iOS(.v11),
+        .macOS(.v10_15),
+        .iOS(.v13)
     ],
     products: [
         .library(
             name: "CodableSQLite",
-            targets: ["CodableSQLite"]),
+            targets: ["CodableSQLite"])
     ],
     dependencies: [
     ],
@@ -22,6 +22,6 @@ let package = Package(
             dependencies: []),
         .testTarget(
             name: "CodableSQLiteTests",
-            dependencies: ["CodableSQLite"]),
+            dependencies: ["CodableSQLite"])
     ]
 )
