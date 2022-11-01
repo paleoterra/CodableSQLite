@@ -13,8 +13,9 @@ public actor CodableSQLite: CodableSQLiteAPI {
     public func setFile(path: String) async throws {
         if FileManager.default.fileExists(atPath: path) {
             filePath = path
+        } else {
+            throw(CodableSQLError.fileNotFound)
         }
-        throw(CodableSQLError.fileNotFound)
     }
 
     public init() {}
@@ -39,14 +40,14 @@ public actor CodableSQLite: CodableSQLiteAPI {
             throw(CodableSQLError.sqliteStatementError(message))
         }
 
-        guard prepareResult == SQLITE_OK else {
+        if prepareResult != SQLITE_OK {
             try processSQLiteError(file: theFile)
         }
 
         sqlite3_reset(stmt)
         if let bindableQuery = query as? QueryBindable {
             let bindings = bindableQuery.bindings
-            bind(bindings: bindings, statement: stmt)
+            try bind(bindings: bindings, statement: stmt)
         }
         var rowData = [[String: Codable]]()
         while sqlite3_step(stmt) == SQLITE_ROW {
@@ -60,6 +61,7 @@ public actor CodableSQLite: CodableSQLiteAPI {
         }
         sqlite3_finalize(stmt)
         closeDB(theFile)
+        print(rowData)
         return rowData
     }
 
@@ -105,7 +107,7 @@ public actor CodableSQLite: CodableSQLiteAPI {
             case let value as String:
                 result = sqlite3_bind_text(statement,
                                            currentIndex,
-                                           value.cString(using: .utf8),
+                                           (value as NSString).utf8String,
                                            -1,
                                            nil)
 
