@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import SQLite3
 
 public protocol CodableSQLiteAPI {
@@ -55,13 +56,10 @@ public actor CodableSQLite: CodableSQLiteAPI {
         }
         let error = sqlite3_errcode(theFile)
         if error != SQLITE_OK && error != SQLITE_DONE {
-            print(#function)
-            print("code \(error)")
-            print(String(cString: sqlite3_errstr(error)))
+            try processSQLiteError(file: theFile)
         }
         sqlite3_finalize(stmt)
         closeDB(theFile)
-        print(rowData)
         return rowData
     }
 
@@ -128,12 +126,15 @@ public actor CodableSQLite: CodableSQLiteAPI {
             if let columnString = String(validatingUTF8: sqlite3_column_name(theStmt, i)) {
                 let columnType = sqlite3_column_type(theStmt, i)
                 switch columnType {
+                    
                 case SQLITE_INTEGER:
                     let baseValue = sqlite3_column_int(theStmt, i)
                     aRecord[columnString] = baseValue
+
                 case SQLITE_FLOAT:
                     let baseValue = sqlite3_column_double(theStmt, i)
                     aRecord[columnString] = baseValue
+
                 case SQLITE_BLOB:
                     let length = sqlite3_column_bytes(theStmt, i)
                     if let pointer = UnsafeRawPointer(sqlite3_column_blob(theStmt, i)) {
@@ -149,7 +150,7 @@ public actor CodableSQLite: CodableSQLiteAPI {
                 case  SQLITE_NULL:
                     ()
                 default:
-                    print("\(columnString) \(columnType)")// do not handle
+                    Logger.codableLog.error("\(columnString) \(columnType)")
                 }
             }
         }
